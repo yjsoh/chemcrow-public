@@ -29,6 +29,17 @@ def _make_llm(model, temp, api_key, streaming: bool = False):
             callbacks=[StreamingStdOutCallbackHandler()],
             openai_api_key=api_key,
         )
+    elif model.startswith("meta-llama"):
+        llm = langchain.chat_models.ChatOpenAI(
+            temperature=temp,
+            model=model,
+            request_timeout=1000,
+            streaming=streaming,
+            callbacks=[StreamingStdOutCallbackHandler()],
+            openai_api_key="EMPTY",
+            openai_api_base="http://localhost:8000/v1",
+            cache=False,
+        )
     else:
         raise ValueError(f"Invalid model name: {model}")
     return llm
