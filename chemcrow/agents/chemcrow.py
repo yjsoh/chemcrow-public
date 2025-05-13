@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, List
 
 import langchain
 from dotenv import load_dotenv
@@ -6,6 +6,9 @@ from langchain import PromptTemplate, chains
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from pydantic import ValidationError
 from rmrkl import ChatZeroShotAgent, RetryAgentExecutor
+from langchain_core.callbacks.base import BaseCallbackHandler
+from langchain_core.callbacks.manager import CallbackManager
+from ..logging_tool import PromptAndResponseLogger
 
 from .prompts import FORMAT_INSTRUCTIONS, QUESTION_PROMPT, REPHRASE_TEMPLATE, SUFFIX
 from .tools import make_tools
@@ -35,7 +38,7 @@ def _make_llm(model, temp, api_key, streaming: bool = False):
             model=model,
             request_timeout=1000,
             streaming=streaming,
-            callbacks=[StreamingStdOutCallbackHandler()],
+            callbacks=[StreamingStdOutCallbackHandler(), PromptAndResponseLogger()],
             openai_api_key="EMPTY",
             openai_api_base="http://localhost:8000/v1",
             cache=False,
@@ -70,20 +73,36 @@ class ChemCrow:
         if tools is None:
             api_keys["OPENAI_API_KEY"] = openai_api_key
             tools_llm = _make_llm(tools_model, temp, openai_api_key, streaming)
-            tools = make_tools(tools_llm, api_keys=api_keys, local_rxn=local_rxn, verbose=verbose)
+            tools = make_tools(
+                tools_llm, api_keys=api_keys, local_rxn=local_rxn, verbose=verbose
+            )
+
+        # Initialize callback handler
+        self.callback_handler: List[BaseCallbackHandler] = [PromptAndResponseLogger()]
+        # callback_manager: BaseCallbackManager = PromptAndResponseManager(
+        #     handlers=self.callback_handler
+        # )
+        callback_manager = CallbackManager(handlers=self.callback_handler)
 
         # Initialize agent
+        agent = ChatZeroShotAgent.from_llm_and_tools(
+            self.llm,
+            tools,
+            suffix=SUFFIX,
+            format_instructions=FORMAT_INSTRUCTIONS,
+            question_prompt=QUESTION_PROMPT,
+            # callback_manager=callback_manager,
+            # callbacks=self.callback_handler,
+        )
+
         self.agent_executor = RetryAgentExecutor.from_agent_and_tools(
+            agent=agent,
             tools=tools,
-            agent=ChatZeroShotAgent.from_llm_and_tools(
-                self.llm,
-                tools,
-                suffix=SUFFIX,
-                format_instructions=FORMAT_INSTRUCTIONS,
-                question_prompt=QUESTION_PROMPT,
-            ),
+            # callback_manager=callback_manager,
+            # callback_manager=None,
             verbose=True,
             max_iterations=max_iterations,
+            # callbacks=self.callback_handler,
         )
 
         rephrase = PromptTemplate(
