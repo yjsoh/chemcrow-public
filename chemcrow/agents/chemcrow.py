@@ -14,7 +14,7 @@ from .prompts import FORMAT_INSTRUCTIONS, QUESTION_PROMPT, REPHRASE_TEMPLATE, SU
 from .tools import make_tools
 
 
-def _make_llm(model, temp, api_key, streaming: bool = False):
+def _make_llm(model, temp, api_key, streaming: bool = False, openai_api_base = "http://localhost:8000/v1"):
     if model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4"):
         llm = langchain.chat_models.ChatOpenAI(
             temperature=temp,
@@ -40,11 +40,20 @@ def _make_llm(model, temp, api_key, streaming: bool = False):
             streaming=streaming,
             callbacks=[StreamingStdOutCallbackHandler(), PromptAndResponseLogger()],
             openai_api_key="EMPTY",
-            openai_api_base="http://localhost:8000/v1",
+            openai_api_base=openai_api_base,
             cache=False,
         )
     else:
-        raise ValueError(f"Invalid model name: {model}")
+        llm = langchain.chat_models.ChatOpenAI(
+            temperature=temp,
+            model=model,
+            request_timeout=1000,
+            streaming=streaming,
+            callbacks=[StreamingStdOutCallbackHandler(), PromptAndResponseLogger()],
+            openai_api_key="EMPTY",
+            openai_api_base=openai_api_base,
+            cache=False,
+        )
     return llm
 
 
@@ -59,6 +68,7 @@ class ChemCrow:
         verbose=True,
         streaming: bool = True,
         openai_api_key: Optional[str] = None,
+        openai_api_base="http://localhost:8000/v1",
         api_keys: dict = {},
         local_rxn: bool = False,
     ):
@@ -66,13 +76,13 @@ class ChemCrow:
 
         load_dotenv()
         try:
-            self.llm = _make_llm(model, temp, openai_api_key, streaming)
+            self.llm = _make_llm(model, temp, openai_api_key, streaming, openai_api_base)
         except ValidationError:
             raise ValueError("Invalid OpenAI API key")
 
         if tools is None:
             api_keys["OPENAI_API_KEY"] = openai_api_key
-            tools_llm = _make_llm(tools_model, temp, openai_api_key, streaming)
+            tools_llm = _make_llm(tools_model, temp, openai_api_key, streaming, openai_api_base)
             tools = make_tools(
                 tools_llm, api_keys=api_keys, local_rxn=local_rxn, verbose=verbose
             )

@@ -40,7 +40,8 @@ class RXNPredictLocal(BaseTool):
         """Make api request."""
         try:
             response = requests.post(
-                "http://localhost:8051/api/v1/run",
+                "http://yx-rxnpred-server-service:8000/api/v1/run",
+                #"http://localhost:8051/api/v1/run",
                 headers={"Content-Type": "application/json"},
                 data=json.dumps({"smiles": reactants})
             )
@@ -72,7 +73,8 @@ class RXNRetrosynthesisLocal(BaseTool):
     def retrosynthesis(self, reactants: str) -> str:
         """Make api request."""
         response = requests.post(
-            "http://localhost:8052/api/v1/run",
+            "http://yx-retrosynth-server-service:8000/api/v1/run",
+            #"http://localhost:8052/api/v1/run",
             headers={"Content-Type": "application/json"},
             data=json.dumps({"smiles": reactants})
         )
