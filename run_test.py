@@ -4,20 +4,21 @@ from datasets import load_dataset
 runs = load_dataset("csv", data_files="chemcrow_tasks.csv")
 
 chem_model = ChemCrow(model="meta-llama/Meta-Llama-3.1-8B-Instruct", tools_model="meta-llama/Meta-Llama-3.1-8B-Instruct", temp=0.1)
-
-for run in runs["train"]:
-    print(run['src'] + " " + run['type'])
-    print(run['prompt'])
-    if run['type'] != 'locked':
-        success = False
-        out = ""
-        while not success:
-            try:
-                out = chem_model.run(run['prompt'])
-                success = True
-            except:
+def tests(filename):
+    with open(filename, "a", encoding="utf-8") as file:
+        for run in runs["train"]:
+            file.write(run['src'] + " " + run['type'])
+            file.write(run['prompt'])
+            if run['type'] != 'locked':
                 success = False
-        print(out)
-    else:
-        print("Task locked, moving onto next task...\n")
+                out = ""
+                while not success:
+                    try:
+                        out = chem_model.run(run['prompt'])
+                        success = True
+                    except:
+                        success = False
+                file.write(out)
+            else:
+                file.write("Task locked, moving onto next task...\n")
 
