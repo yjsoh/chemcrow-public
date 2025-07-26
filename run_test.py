@@ -5,12 +5,15 @@ from datasets import load_dataset
 
 runs = load_dataset("csv", data_files="chemcrow_tasks.csv")
 
-chem_model = ChemCrow(model="meta-llama/Meta-Llama-3.1-8B-Instruct", tools_model="meta-llama/Meta-Llama-3.1-8B-Instruct", temp=0.1)
 
 @click.command()
 @click.option('--filename', prompt="name of output file", help='name of output file')
+@click.option('--vllm_server', prompt="vllm server url", help='vllm server url')
+@click.option('--vllm_key', prompt="openai key (random garbage works just fine)", help='openai key')
 
 def main(filename):
+    chem_model = ChemCrow(model="meta-llama/Meta-Llama-3.1-8B-Instruct", tools_model="meta-llama/Meta-Llama-3.1-8B-Instruct", temp=0.1, openai_api_base=vllm_server, openai_api_key=vllm_key)
+    
     with open(filename, "a", encoding="utf-8") as file:
         for run in runs["train"]:
             file.write(run['src'] + " " + run['type'])
